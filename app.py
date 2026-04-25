@@ -185,7 +185,70 @@ if uploaded_file:
 
         st.subheader("Final Allocation")
         st.dataframe(result_df, use_container_width=True)
+# -------------------------
+# ROUND 2 UPLOAD
+# -------------------------
+st.subheader("Round 2 Allocation")
 
+round2_file = st.file_uploader("Upload Round 2 Excel", type=["xlsx"], key="round2")
+
+if round2_file:
+
+    df2 = pd.read_excel(round2_file)
+
+    st.write("### Round 2 Data")
+    st.dataframe(df2)
+
+    if st.button("Run Round 2 Allocation"):
+
+        allocation_round2 = {}
+
+        for pref_col in ['Preference 1', 'Preference 2', 'Preference 3']:
+
+            remaining = df2[
+                ~df2['Roll Number'].isin(st.session_state.allocated.keys())
+            ]
+
+            remaining = remaining[
+                ~remaining[pref_col].isin(st.session_state.used_projects)
+            ]
+
+            remaining = remaining.dropna(subset=[pref_col])
+
+            grouped = remaining.groupby(pref_col, sort=False)
+
+            for project, group in grouped:
+
+                if project in st.session_state.used_projects:
+                    continue
+
+                if len(group) == 1:
+                    row = group.iloc[0]
+
+                    st.session_state.allocated[row['Roll Number']] = project
+                    st.session_state.used_projects.add(project)
+
+                else:
+                    st.write(f"### Round 2 Conflict: {project}")
+
+                    options = [
+                        f"{row['Name']} ({row['Roll Number']})"
+                        for _, row in group.iterrows()
+                    ]
+
+                    choice = st.selectbox(
+                        f"Select student for {project}",
+                        options,
+                        key=f"r2_{project}"
+                    )
+
+                    selected_roll = choice.split("(")[-1].replace(")", "").strip()
+
+                    st.session_state.allocated[selected_roll] = project
+                    st.session_state.used_projects.add(project)
+
+        st.success("Round 2 Allocation Completed")
+        
         # -------------------------
         # DOWNLOAD EXCEL
         # -------------------------
