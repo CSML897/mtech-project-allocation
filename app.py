@@ -210,64 +210,147 @@ if uploaded_file:
         # -------------------------
         # ROUND 2 UPLOAD
         # -------------------------
-        st.subheader("Round 2 Allocation")
+# -------------------------
+# ROUND 2 SECTION (CORRECT VERSION)
+# -------------------------
+st.subheader("Round 2 Allocation")
 
-        round2_file = st.file_uploader("Upload Round 2 Excel", type=["xlsx"], key="round2")
+round2_file = st.file_uploader("Upload Round 2 Excel", type=["xlsx"], key="round2")
 
-        if round2_file:
-            df2 = pd.read_excel(round2_file)
+if round2_file:
+    st.session_state.r2_df = pd.read_excel(round2_file)
 
-            st.write("Round 2 Data")
-            st.dataframe(df2)
+    st.write("### Round 2 Data")
+    st.dataframe(st.session_state.r2_df)
 
-            if st.button("Run Round 2 Allocation"):
+    if st.session_state.r2_stage == 0:
+        if st.button("Start Round 2 Allocation"):
+            st.session_state.r2_stage = 1
 
-                for pref_col in ['Preference 1', 'Preference 2', 'Preference 3']:
+# -------------------------
+# ROUND 2 FUNCTION
+# -------------------------
+def round2_stage(pref_col, stage_name):
 
-                    remaining = df2[
-                        ~df2['Roll Number'].isin(st.session_state.allocated.keys())
-                    ]
+    st.subheader(stage_name)
 
-                    remaining = remaining[
-                        ~remaining[pref_col].isin(st.session_state.used_projects)
-                    ]
+    df2 = st.session_state.r2_df
 
-                    remaining = remaining.dropna(subset=[pref_col])
+    remaining = df2[
+        ~df2['Roll Number'].isin(st.session_state.allocated.keys())
+    ]
 
-                    grouped = remaining.groupby(pref_col, sort=False)
+    remaining = remaining[
+        ~remaining[pref_col].isin(st.session_state.used_projects)
+    ]
 
-                    for project, group in grouped:
+    remaining = remaining.dropna(subset=[pref_col])
 
-                        if project in st.session_state.used_projects:
-                            continue
+    if remaining.empty:
+        st.info("No students left in this stage.")
+        return {}
 
-                        if len(group) == 1:
-                            row = group.iloc[0]
+    grouped = remaining.groupby(pref_col, sort=False)
 
-                            st.session_state.allocated[row['Roll Number']] = project
-                            st.session_state.used_projects.add(project)
+    selections = {}
 
-                        else:
-                            st.warning(f"Round 2 Conflict: {project}")
+    for project, group in grouped:
 
-                            options = [
-                                f"{row['Name']} ({row['Roll Number']})"
-                                for _, row in group.iterrows()
-                            ]
+        if project in st.session_state.used_projects:
+            continue
 
-                            choice = st.selectbox(
-                                f"Select student for {project}",
-                                options,
-                                key=f"r2_{project}"
-                            )
+        if len(group) == 1:
+            row = group.iloc[0]
+            selections[project] = row['Roll Number']
 
-                            selected_roll = choice.split("(")[-1].replace(")", "").strip()
+        else:
+            st.warning(f"Round 2 Conflict: {project}")
 
-                            st.session_state.allocated[selected_roll] = project
-                            st.session_state.used_projects.add(project)
+            options = [
+                f"{row['Name']} ({row['Roll Number']})"
+                for _, row in group.iterrows()
+            ]
 
-                st.success("Round 2 Allocation Completed")
+            choice = st.selectbox(
+                f"Select student for '{project}'",
+                options,
+                key=f"r2_{stage_name}_{project}"
+            )
 
+            selected_roll = choice.split("(")[-1].replace(")", "").strip()
+            selections[project] = selected_roll
+
+    return selections
+
+# -------------------------
+# ROUND 2 STAGES
+# -------------------------
+if st.session_state.r2_stage == 1:
+
+    selections = round2_stage('Preference 1', "Round 2 - Preference 1")
+
+    if st.button("Finalize Round 2 - Preference 1"):
+        for project, roll in selections.items():
+            st.session_state.allocated[roll] = project
+            st.session_state.used_projects.add(project)
+
+        st.session_state.r2_stage = 2
+
+elif st.session_state.r2_stage == 2:
+
+    selections = round2_stage('Preference 2', "Round 2 - Preference 2")
+
+    if st.button("Finalize Round 2 - Preference 2"):
+        for project, roll in selections.items():
+            st.session_state.allocated[roll] = project
+            st.session_state.used_projects.add(project)
+
+        st.session_state.r2_stage = 3
+
+elif st.session_state.r2_stage == 3:
+
+    selections = round2_stage('Preference 3', "Round 2 - Preference 3")
+
+    if st.button("Finalize Round 2 - Preference 3"):
+        for project, roll in selections.items():
+            st.session_state.allocated[roll] = project
+            st.session_state.used_projects.add(project)
+
+        st.session_state.r2_stage = 4
+
+# -------------------------
+# FINAL RESULT AFTER ROUND 2
+# -------------------------
+elif st.session_state.r2_stage == 4:
+
+    final_result = []
+
+    # Combine Round 1 + Round 2
+    combined_df = pd.concat([df, st.session_state.r2_df], ignore_index=True)
+
+    for _, row in combined_df.iterrows():
+        roll = row['Roll Number']
+
+        if roll in st.session_state.allocated:
+            final_result.append({
+                "Name": row['Name'],
+                "Roll Number": roll,
+                "Allocated Project": st.session_state.allocated[roll],
+                "Round": 1 if roll in df['Roll Number'].values else 2
+            })
+        else:
+            final_result.append({
+                "Name": row['Name'],
+                "Roll Number": roll,
+                "Allocated Project": "Not Allocated",
+                "Round": 2
+            })
+
+    final_df = pd.DataFrame(final_result)
+
+    st.subheader("Final Allocation After Round 2")
+    st.dataframe(final_df)
+    
         # -------------------------
         # RESET
         # -------------------------
