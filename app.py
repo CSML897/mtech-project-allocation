@@ -29,6 +29,12 @@ if "used_projects" not in st.session_state:
 if "stage" not in st.session_state:
     st.session_state.stage = 0
 
+if "r2_stage" not in st.session_state:
+    st.session_state.r2_stage = 0
+
+if "r2_df" not in st.session_state:
+    st.session_state.r2_df = None
+
 # -------------------------
 # FILE UPLOAD
 # -------------------------
@@ -358,3 +364,5 @@ elif st.session_state.r2_stage == 4:
         st.session_state.allocated = {}
         st.session_state.used_projects = set()
         st.session_state.stage = 0
+        st.session_state.r2_stage = 0
+        st.session_state.r2_df = None
