@@ -351,10 +351,10 @@ elif st.session_state.r2_stage == 4:
     st.subheader("Final Allocation After Round 2")
     st.dataframe(final_df)
     
-        # -------------------------
-        # RESET
-        # -------------------------
-        if st.button("Reset Allocation"):
-            st.session_state.allocated = {}
-            st.session_state.used_projects = set()
-            st.session_state.stage = 0
+    # -------------------------
+    # RESET
+    # -------------------------
+    if st.button("Reset Allocation"):
+        st.session_state.allocated = {}
+        st.session_state.used_projects = set()
+        st.session_state.stage = 0
